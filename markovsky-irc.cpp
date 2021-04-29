@@ -83,7 +83,7 @@ typedef struct botsettings_s {
   // Other settings
   float					replyrate;
   int					learning;
-  
+
 
   int					speaking;
   vector<ircbotignore_t>		ignore;
@@ -93,6 +93,9 @@ typedef struct botsettings_s {
   float					replyrate_mynick;
   float					replyrate_magic;
   vector<string>			magicwords;
+
+  int					badwordsdebug;
+  vector<string>			badwords;//Bad words
 
   int					autosaveperiod;
 
@@ -131,6 +134,8 @@ static configsetting_t configsettings[] = {
 
   {(char *)"speaking", (char *)"Controls whether the bot speaks at all (boolean)", NULL, NULL, &botsettings.speaking},
   {(char *)"learning", (char *)"Does the bot learn, or just replies (boolean)", NULL, NULL, &botsettings.learning},
+  {(char *)"badwordsdebug", (char *)"Show message when bad word was detected (boolean)", NULL, NULL, &botsettings.badwordsdebug},
+
   {(char *)"joininvites", (char *)"Join the channels the bot was invited to (0 - no, 1 - yes, 2 - only by owner)", NULL, NULL, &botsettings.joininvites},
 
   {(char *)NULL, (char *)NULL, NULL, NULL, NULL},       // Newline in cfg
@@ -201,6 +206,15 @@ void LoadBotSettings() {
 	  }
 	}
 
+        if (!strcasecmp(cursetting[0].c_str(), "badwords"))	{
+          vector<string> cursplit;
+          if (!splitString (cursetting[1], cursplit, " ")) continue;
+          botsettings.badwords.clear();
+          for (int i = 0, sz = cursplit.size(); i < sz; i++) {
+                botsettings.badwords.push_back(cursplit[i]);
+          }
+        }
+
 	for (int i = 0; i < numconfigsettings; i++) {
 	  configsetting_t* s = &configsettings[i];
 	  if (s->configline == NULL) continue;
@@ -232,7 +246,7 @@ void SaveBotSettings() {
 	  fprintf (f, "\n\n");
 	  continue;
 	}
-	
+
 	fprintf (f, "; %s\n", s->description);
 	if (s->stringptr != NULL) {
 	  fprintf (f, "%s = %s\n", s->configline, (*s->stringptr).c_str());
@@ -270,6 +284,13 @@ void SaveBotSettings() {
   fprintf (f, "ignore =");
   for (i = 0, sz = botsettings.ignore.size(); i < sz; i++) {
   	fprintf (f, " %s", botsettings.ignore[i].nickname.c_str());
+  }
+  fprintf (f, "\n");
+
+  fprintf (f, "; Bad words list which will not be learned\n");
+  fprintf (f, "badwords =");
+  for (i = 0, sz = botsettings.badwords.size(); i < sz; i++) {
+        fprintf (f, " %s", botsettings.badwords[i].c_str());
   }
   fprintf (f, "\n");
 
@@ -360,6 +381,26 @@ string ProcessMessage(BN_PInfo I, const char who[], const char msg[], bool reply
   if (stdmessage[0] == '<') return "";
   if (stdmessage[0] == '[') return "";
   if (stdmessage[0] == '(') return "";
+
+  //Ignore bad words
+  {
+      vector<string> cursplit;
+      if (splitString (stdmessage, cursplit, " "))
+      {
+          for (int q = 0, sz = cursplit.size(); q < sz; q++) {
+              int sz2 = botsettings.badwords.size();
+              for (int i = 0; i < sz2; i++) {
+                if (!strcasecmp(cursplit[q].c_str(), botsettings.badwords[i].c_str())) {
+                    if(botsettings.badwordsdebug==1)
+                        return "Don't swear, idiot!";
+                    else
+                        return "";
+                }
+              }
+          }
+      }
+  }
+
 
   if (randFloat(0, 99) < botsettings.replyrate) {
 	replying = true;
@@ -610,7 +651,7 @@ string CMD_Save_f(class Markovsky* self, const string command) {
   SaveBotSettings();
   gMarkovsky.SaveSettings();
   return "okay";
-}                                                             
+}
 
 string CMD_Join_f (class Markovsky* self, const string command) {
   if (CMA_Argc() < 2) return "";
@@ -627,7 +668,7 @@ string CMD_Join_f (class Markovsky* self, const string command) {
 }
 
 
-string CMD_Part_f (class Markovsky* self, const string command) {
+string CMD_Part_f (class Markovsky* , const string ) {
   if (CMA_Argc() < 2) return "";
 
   for (int i = 1, sz = CMA_Argc(); i < sz; i++) {
@@ -643,8 +684,26 @@ string CMD_Part_f (class Markovsky* self, const string command) {
   return "okay";
 }
 
+string CMD_FiterWord_f (class Markovsky* , const string)
+{
+  if (CMA_Argc() < 2) return "";
 
-string CMD_Replyrate_f(class Markovsky* self, const string command) {
+  for (int i = 1, sz = CMA_Argc(); i < sz; i++) {
+        string badword = CMA_Argv(i);
+        printf ("Cleaning up dictionary from %s...\n", CMA_Argv(i));
+
+        int z=0;
+        for(z=0;z<botsettings.badwords.size(); z++)
+        {
+            if(botsettings.badwords[z]==badword) break;
+        }
+        if(z==botsettings.badwords.size())
+            botsettings.badwords.push_back(badword);
+  }
+  return "done";
+}
+
+string CMD_Replyrate_f(class Markovsky* , const string ) {
   static char retstr[4096];
   if (CMA_Argc() < 2) {
 	snprintf (retstr, 4096, "Reply rate is %.1f%%", botsettings.replyrate);
@@ -656,7 +715,7 @@ string CMD_Replyrate_f(class Markovsky* self, const string command) {
   return retstr;
 }
 
-string CMD_Replynick_f(class Markovsky* self, const string command) {
+string CMD_Replynick_f(class Markovsky*, const string) {
   static char retstr[4096];
   if (CMA_Argc() < 2) {
 	snprintf (retstr, 4096, "Reply rate to nickname is %.1f%%", botsettings.replyrate_mynick);
@@ -668,7 +727,7 @@ string CMD_Replynick_f(class Markovsky* self, const string command) {
   return retstr;
 }
 
-string CMD_Replyword_f(class Markovsky* self, const string command) {
+string CMD_Replyword_f(class Markovsky* , const string) {
   static char retstr[4096];
   if (CMA_Argc() < 2) {
 	snprintf (retstr, 4096, "Reply rate to magic words is %.1f%%", botsettings.replyrate_magic);
@@ -864,5 +923,5 @@ int main (int argc, char* argv[]) {
 
 /*
  * Local variables:
- *  tab-width: 4 
+ *  tab-width: 4
 */

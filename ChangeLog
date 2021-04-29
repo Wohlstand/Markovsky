@@ -1,3 +1,5 @@
+05/03/2015: v0.53
+- added the "badwords = " to filter words bot should don't learn, for example, swearing and offencive phrases
 
 11/10/2009: v0.53
 - added the !ignore command with add/delete options for modifying the ignore list

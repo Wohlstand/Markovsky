@@ -21,6 +21,8 @@ string CMD_Save_f (class Markovsky* self, const string command);
 string CMD_Learning_f (class Markovsky* self, const string command);
 string CMD_ircHelp_f (class Markovsky* self, const string command);
 
+string CMD_FiterWord_f (class Markovsky* self, const string command);
+
 string ircParseCommands(const string command, const char* who);
 
 static botcommand_t ircbotcmds[] = {
@@ -29,6 +31,7 @@ static botcommand_t ircbotcmds[] = {
   {"wakeup", "As the name says", CMD_Wakeup_f},
   {"join", "Join channel", CMD_Join_f},
   {"part", "Part channel", CMD_Part_f},
+  {"filterword", "Removes all strings contains target word from dictionary and adds it into badwords list", CMD_FiterWord_f},
 
   {"ignore", "Displays the ignore list. Or use add/delete <username> to manipulate the list.", CMD_Ignore_f},
  
